@@ -6,15 +6,15 @@ import PackageDescription
 let package = Package(
     name: "AtariKit",
     products: [
-        .library(name: "ALE", targets: ["ALE"]),
-        .library(name: "AtariKit", targets: ["AtariKit"]),
+        .library(name: "AtariKit", type: .static, targets: ["AtariKit"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Octadero/CALE.git", from: "0.0.1"),
+        .package(url: "https://github.com/Octadero/CALE.git", from: "0.0.2"),
     ],
     targets: [
-        .target(name: "ALE", dependencies: []),
-        .target(name: "AtariKit", dependencies: ["ALE"]),
+        .target(name: "AtariKit", dependencies: []),
         .testTarget(name: "AtariKitTests", dependencies: ["AtariKit"]),
-    ]
+    ],
+    cLanguageStandard: .c11,
+    cxxLanguageStandard: .cxx11
 )

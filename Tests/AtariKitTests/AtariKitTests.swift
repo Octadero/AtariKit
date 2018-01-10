@@ -4,8 +4,12 @@ import AtariKit
 class AtariKitTests: XCTestCase {
     func testGame() {
         do {
-            print("Set right path to the rom!")
-            let game = try Environment(romPath: "/AtariKit/atari-roms/pong.bin")
+            guard let romURL = URL(string: "https://github.com/Octadero/AtariKit/raw/master/atari-roms/pong.bin") else { XCTFail("Can't compute url."); return }
+            let  rom = try Data(contentsOf: romURL)
+            let romPath = "/tmp/pong.bin"
+            try rom.write(to: URL(fileURLWithPath: romPath))
+            
+            let game = try Environment(romPath: "/tmp/pong.bin")
             
             var gameNumber = 1
             var frame: UInt64 = 0
@@ -16,6 +20,7 @@ class AtariKitTests: XCTestCase {
                 
                 if screen.count != size.width * size.height * 3 {
                     XCTFail("Incorrect RGB buffer size.")
+                    return
                 }
                 //save image on file system and put to ffmpeg
                 //game.saveScreen(at: "/tmp/frame_\(frame).png")
@@ -23,7 +28,15 @@ class AtariKitTests: XCTestCase {
                 //
                 frame += 1
                 if reward != 0 {
+                    let filled = screen.filter{ $0 != 0}
+                    
+                    if filled.count == 0 {
+                        XCTFail("Screen can't be full black.")
+                        return
+                    }
+                    
                     game.saveScreen(at: "/tmp/image-\(Date().timeIntervalSince1970)-width-\(size.width)xheight-\(size.height).png")
+                    
                     print("reward: \(reward).")
                 }
                 if game.isOver {

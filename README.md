@@ -53,6 +53,17 @@ dependencies: [
 ],
 ```
 
+### Ubuntu
+Call to build
+```
+swift build -Xlinker -rpath -Xlinker /usr/local/lib/
+```
+Call to launch tests
+```
+swift test -Xlinker -rpath -Xlinker /usr/local/lib/
+```
+
+
 Create game using one of the roms and launch game:
 ```
 let game = try Environment(romPath: "%pathToSources%/AtariKit/atari-roms/pong.bin")

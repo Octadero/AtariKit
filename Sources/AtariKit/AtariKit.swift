@@ -1,7 +1,7 @@
-import ALE
+import CALE
 import Foundation
 
-typealias ALEInterface = UnsafeRawPointer
+typealias ALEInterface = OpaquePointer
 
 public enum EnvironmentError: Error {
     case romNotFound
@@ -56,7 +56,7 @@ public enum EnvironmentAction: Int32 {
 
 /// Represent Atari game environment.
 public class Environment {
-    private let interface: ALEInterface
+    private let aleInterface: ALEInterface?
     private var bufferPointer: UnsafeMutablePointer<UInt8> = UnsafeMutablePointer<UInt8>.allocate(capacity: 0)
     private var pixelsCount: Int = 0
     
@@ -66,51 +66,52 @@ public class Environment {
             throw EnvironmentError.romNotFound
         }
         
-        interface = initializeInterface()
+        aleInterface = CALE.ALE_new()
         
         romPath.withCString { (pointer)  in
-            ALE.loadROM(interface, pointer)
+            CALE.loadROM(aleInterface, pointer)
         }
         
-        let count = Int(ALE.getScreenWidth(interface) * ALE.getScreenHeight(interface)) * 3
+        let count = Int(CALE.getScreenWidth(aleInterface) * CALE.getScreenHeight(aleInterface)) * 3
         pixelsCount = count
         bufferPointer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
-        bufferPointer.initialize(to: 0)
+        bufferPointer.initialize(to: 0, count: count)
     }
     
     /// Do `EnvironmentAction` and return reward.
     public func send(action: EnvironmentAction) -> Int {
-        return Int(act(interface, action.rawValue))
+        return Int(CALE.act(aleInterface, action.rawValue))
     }
     
     /// Return array of available `EnvironmentAction` for loaded rom.
     public func legalActions() -> [EnvironmentAction] {
         let actions = UnsafeMutablePointer<Int32>.allocate(capacity: Int(EnvironmentAction.allValues.rawValue))
-        let count = UnsafeMutablePointer<UInt>.allocate(capacity: 1)
+        let count = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
         
-        ALE.getLegalActionSet(interface, actions, count)
-        let bufferCount: UInt = count.pointee
+        CALE.getLegalActionSet(aleInterface, actions)
+        
+        let bufferCount: Int32 = count.pointee
         let buffer = UnsafeBufferPointer(start: actions, count: Int(bufferCount))
         let arrayOfActions = Array(buffer)
         actions.deinitialize()
         count.deinitialize()
+        
         return arrayOfActions.flatMap { EnvironmentAction(rawValue: $0) }
     }
     
     /// Reset game in `Environment`
     public func reset() {
-        reset_game(interface)
+        CALE.reset_game(aleInterface)
     }
     
     /// Return screen size width and height
     public func screenSize() -> (width: Int, height: Int) {
-        return (Int(ALE.getScreenWidth(interface)) ,
-                Int(ALE.getScreenHeight(interface)))
+        return (Int(CALE.getScreenWidth(aleInterface)) , Int(CALE.getScreenHeight(aleInterface)))
     }
     
     /// Draw and return RGB screen buffer
     public func screenRGBBuffer() -> Array<UInt8> {
-        getScreenRGB(interface, bufferPointer)
+        getScreenRGB(aleInterface, bufferPointer)
         // width * height * R G B components
         let buffer = UnsafeBufferPointer(start: bufferPointer, count: pixelsCount)
         let rgbBites = Array(buffer)
@@ -119,20 +120,20 @@ public class Environment {
     
     /// True when game is finished, after that call reset to continue. 
     public var isOver: Bool {
-        let over: Int8 = ALE.game_over(interface)
+        let over: UInt8 = CALE.game_over(aleInterface)
         return over != 0
     }
     
     /// Save current screen as png image with passed path
     public func saveScreen(at path: String) {
         path.withCString { (pathPointer) in
-            ALE.saveScreenPNG(interface, pathPointer)
+            CALE.saveScreenPNG(aleInterface, pathPointer)
         }
     }
         
     deinit {
         bufferPointer.deinitialize(count: pixelsCount)
         //  Leeds to error free(): invalid next size (fast): 0x0000000002252f20 ***
-        //  deleteInterface(interface)
+        //  deleteCInterface(aleInterface)
     }
 }
