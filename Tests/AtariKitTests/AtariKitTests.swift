@@ -10,7 +10,7 @@ class AtariKitTests: XCTestCase {
             try rom.write(to: URL(fileURLWithPath: romPath))
             
             let game = try Environment(romPath: "/tmp/pong.bin")
-            
+            print("Available actions: ", game.legalActions())
             var gameNumber = 1
             var frame: UInt64 = 0
             while true {
@@ -35,12 +35,12 @@ class AtariKitTests: XCTestCase {
                         return
                     }
                     
-                    game.saveScreen(at: "/tmp/image-\(Date().timeIntervalSince1970)-width-\(size.width)xheight-\(size.height).png")
+                    try game.saveScreen(at: "/tmp/reward/image-\(Date().timeIntervalSince1970)-width-\(size.width)xheight-\(size.height).png")
                     
                     print("reward: \(reward).")
                 }
                 if game.isOver {
-                    game.saveScreen(at: "/tmp/image-\(Date().timeIntervalSince1970)-width-\(size.width)xheight-\(size.height).png")
+                    try game.saveScreen(at: "/tmp/over/image-\(Date().timeIntervalSince1970)-width-\(size.width)xheight-\(size.height).png")
 
                     gameNumber -= 1
                     game.reset()

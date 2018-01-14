@@ -5,6 +5,7 @@ typealias ALEInterface = OpaquePointer
 
 public enum EnvironmentError: Error {
     case romNotFound
+    case canNotComputeURL
 }
 
 public enum EnvironmentAction: Int32 {
@@ -85,16 +86,15 @@ public class Environment {
     
     /// Return array of available `EnvironmentAction` for loaded rom.
     public func legalActions() -> [EnvironmentAction] {
-        let actions = UnsafeMutablePointer<Int32>.allocate(capacity: Int(EnvironmentAction.allValues.rawValue))
-        let count = UnsafeMutablePointer<Int32>.allocate(capacity: 1)
+        let count = Int(CALE.getLegalActionSize(aleInterface))
+        
+        let actions = UnsafeMutablePointer<Int32>.allocate(capacity: count)
+        actions.initialize(to: 0)
         
         CALE.getLegalActionSet(aleInterface, actions)
-        
-        let bufferCount: Int32 = count.pointee
-        let buffer = UnsafeBufferPointer(start: actions, count: Int(bufferCount))
+        let buffer = UnsafeBufferPointer(start: actions, count: count)
         let arrayOfActions = Array(buffer)
         actions.deinitialize()
-        count.deinitialize()
         
         return arrayOfActions.flatMap { EnvironmentAction(rawValue: $0) }
     }
@@ -124,16 +124,38 @@ public class Environment {
         return over != 0
     }
     
+    func provideFolder(at path: String) throws {
+        guard let fullPath = URL(string: path) else {
+            throw EnvironmentError.canNotComputeURL
+        }
+        
+        
+        let folderURL = URL(fileURLWithPath: fullPath.deletingLastPathComponent().absoluteString,
+                            isDirectory: true)
+        
+        var isDirectory : ObjCBool = false
+        if FileManager.default.fileExists(atPath: folderURL.absoluteString, isDirectory: &isDirectory) {
+            #if os(Linux)
+                if isDirectory { return }
+            #else
+                if isDirectory.boolValue { return }
+            #endif
+        }
+        
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
+    }
+    
     /// Save current screen as png image with passed path
-    public func saveScreen(at path: String) {
+    public func saveScreen(at path: String) throws {
+        try provideFolder(at: path)
+        
         path.withCString { (pathPointer) in
             CALE.saveScreenPNG(aleInterface, pathPointer)
         }
     }
-        
+    
     deinit {
         bufferPointer.deinitialize(count: pixelsCount)
-        //  Leeds to error free(): invalid next size (fast): 0x0000000002252f20 ***
-        //  deleteCInterface(aleInterface)
+        CALE.ALE_del(aleInterface)
     }
 }
