@@ -75,6 +75,9 @@ public class Environment {
         
         let count = Int(CALE.getScreenWidth(aleInterface) * CALE.getScreenHeight(aleInterface)) * 3
         pixelsCount = count
+        
+        // deallocate default value
+        bufferPointer.deallocate(capacity: 0)
         bufferPointer = UnsafeMutablePointer<UInt8>.allocate(capacity: count)
         bufferPointer.initialize(to: 0, count: count)
     }
@@ -117,6 +120,12 @@ public class Environment {
         let rgbBites = Array(buffer)
         return rgbBites
     }
+
+    /// Draw and return RGB screen UnsafeMutablePointer
+    public func screenRGBBuffer() -> (pointer: UnsafeMutablePointer<UInt8>, pixelsCount: Int) {
+        getScreenRGB(aleInterface, bufferPointer)
+        return (bufferPointer, pixelsCount)
+    }
     
     /// True when game is finished, after that call reset to continue. 
     public var isOver: Bool {
@@ -155,7 +164,7 @@ public class Environment {
     }
     
     deinit {
-        bufferPointer.deinitialize(count: pixelsCount)
+        bufferPointer.deallocate(capacity: pixelsCount)
         CALE.ALE_del(aleInterface)
     }
 }
